@@ -14,11 +14,11 @@ public class Person
 
     public Department? Department { get; set; }
 
-    public required string Email { get; set; } = string.Empty;
+    public  string Email { get; set; } = string.Empty;
 
-    public required string PhoneNumber { get; set; } = string.Empty;
+    public string PhoneNumber { get; set; } = string.Empty;
 
-    public required string ProfileImageUrl { get; set; } = string.Empty;
+    public string ProfileImageUrl { get; set; } = string.Empty;
 
-    public required bool IsActive  { get; set; }
+    public bool IsActive  { get; set; }
 }
