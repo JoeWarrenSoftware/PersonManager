@@ -1,9 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using UKParliament.CodeTest.Data;
+using Serilog;
+using UKParliament.CodeTest.Services;
 using UKParliament.CodeTest.Web.Contracts.Requests;
 using UKParliament.CodeTest.Web.Contracts.Responses;
 using UKParliament.CodeTest.Web.Mapping;
+using ILogger = Serilog.ILogger;
 
 namespace UKParliament.CodeTest.Web.Controllers;
 
@@ -11,191 +12,167 @@ namespace UKParliament.CodeTest.Web.Controllers;
 [Route("api/[controller]")]
 public class PersonController : ControllerBase
 {
-    private readonly PersonManagerContext _context;
+    private readonly IPersonService _service;
+    private readonly ILogger _logger;
 
-    public PersonController(PersonManagerContext context)
+    public PersonController(IPersonService service)
     {
-        _context = context;
+        _service = service;
+        _logger = Log.ForContext<PersonController>();
     }
 
     /// <summary>
-    /// Get a specific person
+    /// Get a specific person by ID
     /// </summary>
-    /// <param name="id">ID of a person</param>
-    /// <returns>404,200</returns>
+    /// <param name="id">Person ID</param>
+    /// <returns>200 OK or 404 Not Found</returns>
     [HttpGet("{id:int}")]
     public async Task<ActionResult<PersonResponse>> GetById(int id)
     {
-        var person = await _context.People
-            .Include(p => p.Department)
-            .FirstOrDefaultAsync(p => p.Id == id);
-
-        if (person == null)
+        _logger.Information("Fetching person with ID {PersonId}", id);
+        var result = await _service.GetPersonByIdAsync(id);
+        if (!result.IsSuccess)
         {
-            return NotFound();
+            _logger.Warning("Person with ID {PersonId} not found.", id);
+            return NotFound(new { message = result.ErrorMessage });
         }
 
-        var response = person.MapToResponse();
-
-        return Ok(response);
+        _logger.Information("Successfully fetched person with ID {PersonId}", id);
+        return Ok(result.Data!.MapToResponse());
     }
 
     /// <summary>
     /// Get all people
     /// </summary>
-    /// <returns>200</returns>
+    /// <returns>200 OK or 400 Bad Request</returns>
     [HttpGet]
     public async Task<ActionResult<PersonsResponse>> GetAll()
     {
-        var persons = await _context.People
-            .Include(p => p.Department)
-            .Where(p => p.IsActive)
-            .ToListAsync();
+        _logger.Information("Fetching all active people.");
+        var result = await _service.GetAllPeopleAsync();
+        if (!result.IsSuccess)
+        {
+            _logger.Warning("Failed to fetch all people: {ErrorMessage}", result.ErrorMessage);
+            return BadRequest(new { message = result.ErrorMessage });
+        }
 
-        var personsResponse = persons.MapToResponse();
-
-        return Ok(personsResponse);
+        _logger.Information("Successfully fetched {Count} people.", result.Data!.Count);
+        return Ok(result.Data!.MapToResponse());
     }
 
     /// <summary>
-    /// Create a person
+    /// Create a new person
     /// </summary>
-    /// <param name="newPerson">Request body of person parameters</param>
-    /// <returns>400,201</returns>
+    /// <param name="request">Person details</param>
+    /// <returns>201 Created or 400 Bad Request</returns>
     [HttpPost]
     public async Task<ActionResult<PersonResponse>> CreatePerson([FromBody] CreatePersonRequest request)
     {
-        // Validate required parameters
-        if (string.IsNullOrWhiteSpace(request.FirstName) ||
-            string.IsNullOrWhiteSpace(request.LastName) ||
-            request.DepartmentId <= 0)
+        _logger.Information("Creating new person: {@Request}", request);
+        var person = request.MapToPerson();
+        var result = await _service.AddPersonAsync(person);
+
+        if (!result.IsSuccess)
         {
-            return BadRequest(new { message = "First Name, Last Name, and a valid Department are required." });
-        }
-        
-        // Validate Department
-        var department = await _context.Departments.FindAsync(request.DepartmentId);
-        if (department == null)
-        {
-            return BadRequest(new { message = "Invalid DepartmentId. Department does not exist." });
+            _logger.Warning("Failed to create person: {ErrorMessage}", result.ErrorMessage);
+            return BadRequest(new { message = result.ErrorMessage });
         }
 
-        // Add them
-        var newPerson = request.MapToPerson();
-        _context.People.Add(newPerson);
-        await _context.SaveChangesAsync();
-
-        var newPersonResponse = newPerson.MapToResponse();
-
-        return CreatedAtAction(nameof(GetById), new { id = newPerson.Id }, newPersonResponse);
+        _logger.Information("Person created successfully: {@Person}", person);
+        return CreatedAtAction(nameof(GetById), new { id = person.Id }, person.MapToResponse());
     }
 
     /// <summary>
-    /// Update a person
+    /// Update an existing person
     /// </summary>
-    /// <param name="id">ID of a person</param>
-    /// <param name="updatedPerson">Request body of person parameters</param>
-    /// <returns>400,404,200</returns>
+    /// <param name="id">Person ID</param>
+    /// <param name="request">Updated person details</param>
+    /// <returns>200 OK, 400 Bad Request, or 404 Not Found</returns>
     [HttpPut("{id:int}")]
     public async Task<ActionResult<PersonResponse>> UpdatePerson(int id, [FromBody] UpdatePersonRequest request)
     {
-        // Validate person exists
-        var existingPerson = await _context.People.FindAsync(id);
-        if (existingPerson == null)
-            return NotFound(new { message = "Person not found." });
-
-        // Validate Department exists if updating it
-        if (existingPerson.DepartmentId != request.DepartmentId)
+        _logger.Information("Updating person with ID {PersonId}: {@Request}", id, request);
+        var existingPerson = await _service.GetPersonByIdAsync(id);
+        if (!existingPerson.IsSuccess)
         {
-            var department = await _context.Departments.FindAsync(request.DepartmentId);
-            if (department == null)
-                return BadRequest(new { message = "Invalid DepartmentId. Department does not exist." });
+            _logger.Warning("Person with ID {PersonId} not found.", id);
+            return NotFound(new { message = existingPerson.ErrorMessage });
         }
 
-        // Update person
-        request.MapToExistingPerson(existingPerson);
-        await _context.SaveChangesAsync();
+        var person = request.MapToPerson(id);
+        var result = await _service.UpdatePersonAsync(person);
 
-        var response = existingPerson.MapToResponse();
+        if (!result.IsSuccess)
+        {
+            _logger.Warning("Failed to update person with ID {PersonId}: {ErrorMessage}", id, result.ErrorMessage);
+            return BadRequest(new { message = result.ErrorMessage });
+        }
 
-        return Ok(response);
+        _logger.Information("Person with ID {PersonId} updated successfully.", id);
+        return Ok(person.MapToResponse());
     }
 
     /// <summary>
-    /// Soft-delete a person by setting the IsActive property false 
+    /// Soft-delete a person (deactivate)
     /// </summary>
-    /// <param name="id">ID of a person</param>
-    /// <returns>400,404,200</returns>
+    /// <param name="id">Person ID</param>
+    /// <returns>200 OK, 400 Bad Request, or 404 Not Found</returns>
     [HttpPatch("{id}/deactivate")]
     public async Task<IActionResult> DeactivatePerson(int id)
     {
-        // Validate person exists
-        var person = await _context.People.FindAsync(id);
-        if (person == null)
+        _logger.Information("Deactivating person with ID {PersonId}", id);
+        var result = await _service.DeactivatePersonAsync(id);
+        if (!result.IsSuccess)
         {
-            return NotFound(new { message = "Person not found." });
+            _logger.Warning("Failed to deactivate person with ID {PersonId}: {ErrorMessage}", id, result.ErrorMessage);
+            if (result.ErrorMessage == "Person not found.")
+                return NotFound(new { message = result.ErrorMessage });
+            return BadRequest(new { message = result.ErrorMessage });
         }
 
-        // Validate existing IsActive status
-        if (!person.IsActive)
-        {
-            return BadRequest(new { message = "Person is already deactivated." });
-        }
-
-        // Soft delete: Set IsActive = false
-        person.IsActive = false;
-        await _context.SaveChangesAsync();
-
+        _logger.Information("Person with ID {PersonId} deactivated successfully", id);
         return Ok(new { message = "Person has been deactivated." });
     }
 
     /// <summary>
-    /// Reinstate a person by setting the IsActive property true 
+    /// Reactivate a person
     /// </summary>
-    /// <param name="id">ID of person</param>
-    /// <returns>400,404,200</returns>
+    /// <param name="id">Person ID</param>
+    /// <returns>200 OK, 400 Bad Request, or 404 Not Found</returns>
     [HttpPatch("{id}/activate")]
     public async Task<IActionResult> ActivatePerson(int id)
     {
-        // Validate person exists
-        var person = await _context.People.FindAsync(id);
-        if (person == null)
+        _logger.Information("Activating person with ID {PersonId}", id);
+        var result = await _service.ActivatePersonAsync(id);
+        if (!result.IsSuccess)
         {
-            return NotFound(new { message = "Person not found." });
+            _logger.Warning("Failed to activate person with ID {PersonId}: {ErrorMessage}", id, result.ErrorMessage);
+            if (result.ErrorMessage == "Person not found.")
+                return NotFound(new { message = result.ErrorMessage });
+            return BadRequest(new { message = result.ErrorMessage });
         }
 
-        // Validate existing IsActive status
-        if (person.IsActive)
-        {
-            return BadRequest(new { message = "Person is already active." });
-        }
-
-        // Activate status
-        person.IsActive = true;
-        await _context.SaveChangesAsync();
-
+        _logger.Information("Person with ID {PersonId} activated successfully", id);
         return Ok(new { message = "Person has been reactivated." });
     }
 
     /// <summary>
-    /// Hard-delete a person permanently from the datastore
+    /// Permanently delete a person
     /// </summary>
-    /// <param name="id">ID of a person</param>
-    /// <returns>404,200</returns>
+    /// <param name="id">Person ID</param>
+    /// <returns>200 OK or 404 Not Found</returns>
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeletePerson(int id)
     {
-        var person = await _context.People.FindAsync(id);
-        if (person == null)
+        _logger.Information("Deleting person with ID {PersonId}", id);
+        var result = await _service.DeletePersonAsync(id);
+        if (!result.IsSuccess)
         {
-            return NotFound(new { message = "Person not found." });
+            _logger.Warning("Failed to delete person with ID {PersonId}: {ErrorMessage}", id, result.ErrorMessage);
+            return NotFound(new { message = result.ErrorMessage });
         }
-        var firstName = person.FirstName;
-        var lastName = person.LastName;
 
-        _context.People.Remove(person);
-        await _context.SaveChangesAsync();
-
-        return Ok(new { message = $"Person ({firstName} {lastName}) has been permanently deleted." });
+        _logger.Information("Person with ID {PersonId} deleted successfully.", id);
+        return Ok(new { message = "Person has been permanently deleted." });
     }
 }
