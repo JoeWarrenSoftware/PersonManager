@@ -19,18 +19,28 @@ public class Program
 
         // Add services to the container.
 
-        builder.Services.AddControllersWithViews();
-
-        if (builder.Environment.IsDevelopment())
-        {
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
-        }
-
+        builder.Services.AddControllers();
         builder.Services.AddDbContext<PersonManagerContext>(op => op.UseInMemoryDatabase("PersonManager"));
 
         builder.Services.AddScoped<IDataStorageRepository, DataStorageRepository>();
         builder.Services.AddScoped<IPersonService, PersonService>();
+        builder.Services.AddScoped<IDepartmentService, DepartmentService>();
+
+        if (builder.Environment.IsDevelopment())
+        {
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowFrontend", policy =>
+                {
+                    policy.WithOrigins("http://localhost:5173")
+                          .AllowAnyMethod()
+                          .AllowAnyHeader()
+                          .AllowCredentials();
+                });
+            });
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
+        }
 
         var app = builder.Build();
 
@@ -41,15 +51,11 @@ public class Program
             context.Database.EnsureCreated();
         }
 
-        // Configure the HTTP request pipeline.
-        if (!app.Environment.IsDevelopment())
-        {
-            // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-            app.UseHsts();
-        }
-        else
+        // Midddleware
+        if (app.Environment.IsDevelopment())
         {
             // Development Environment
+            app.UseCors("AllowFrontend");
             app.UseSwagger();
             app.UseSwaggerUI(options =>
             {
@@ -57,16 +63,15 @@ public class Program
                 options.RoutePrefix = string.Empty;
             });
         }
+        else
+        {
+            // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+            app.UseHsts();
+        }
 
         app.UseHttpsRedirection();
-        app.UseStaticFiles();
-        app.UseRouting();
         app.UseSerilogRequestLogging();
-        app.MapControllerRoute(
-            name: "default",
-            pattern: "{controller}/{action=Index}/{id?}");
-
-        app.MapFallbackToFile("index.html");
+        app.MapControllers();
 
         app.Run();
     }

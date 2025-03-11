@@ -15,6 +15,8 @@ public class DataStorageRepository : IDataStorageRepository
         _context = context;
     }
 
+    #region Person
+
     public async Task<List<Person>> GetAllActivePeopleAsync()
     {
         return await _context.People
@@ -28,11 +30,6 @@ public class DataStorageRepository : IDataStorageRepository
         return await _context.People
             .Include(p => p.Department)
             .FirstOrDefaultAsync(p => p.Id == id);
-    }
-
-    public async Task<bool> DepartmentExistsAsync(int departmentId)
-    {
-        return await _context.Departments.AnyAsync(d => d.Id == departmentId);
     }
 
     public async Task AddPersonAsync(Person person)
@@ -56,4 +53,21 @@ public class DataStorageRepository : IDataStorageRepository
         _context.People.Remove(person);
         await _context.SaveChangesAsync();
     }
+
+    #endregion
+
+    #region Department
+
+    public async Task<List<Department>> GetAllDepartmentsAsync()
+    {
+        return await _context.Departments
+            .ToListAsync();
+    }
+
+    public async Task<bool> DepartmentExistsAsync(int departmentId)
+    {
+        return await _context.Departments.AnyAsync(d => d.Id == departmentId);
+    }
+
+    #endregion
 }

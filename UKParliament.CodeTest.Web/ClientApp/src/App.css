@@ -1,0 +1,168 @@
+/* ============================= */
+/* 🎨 Color Variables */
+/* ============================= */
+:root {
+  /* Light Mode Colors */
+  --bg-color: #ffffff;
+  --text-color: #000000;
+  --navbar-bg: #ffffff;
+  --nav-link-color: #333;
+  --card-bg: #ffffff;
+  --card-text-color: #000;
+  --footer-bg: #1a1a1a;
+  --footer-text: white;
+  --btn-primary-bg: #004288;
+  --btn-primary-border: #003e80;
+  --btn-light-bg: #f8f9fa;
+  --btn-light-text: #000;
+  --btn-dark-bg: #222;
+  --btn-dark-text: #fff;
+
+  /* Dark Mode Colors */
+  --dark-bg-color: #121212;
+  --dark-text-color: #ffffff;
+  --dark-navbar-bg: #003bb3;
+  --dark-nav-link-color: #d1d1d1;
+  --dark-card-bg: #1e1e1e;
+  --dark-card-text-color: #ffffff;  /* Ensures readability */
+  --dark-footer-bg: #000;
+  --dark-footer-text: #d1d1d1;
+  --dark-btn-primary-bg: #0056b3;
+  --dark-btn-primary-border: #0056b3;
+}
+
+/* ============================= */
+/* 🌞 Default Light Mode Styles */
+/* ============================= */
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ============================= */
+/* 🌙 Dark Mode Styles */
+/* ============================= */
+body.dark-mode {
+  background-color: var(--dark-bg-color);
+  color: var(--dark-text-color);
+}
+
+/* ============================= */
+/* 📌 Navbar Styles */
+/* ============================= */
+.navbar {
+  background-color: var(--navbar-bg);
+  padding: 8px 0;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body.dark-mode .navbar {
+  background-color: var(--dark-navbar-bg);
+}
+
+.navbar .nav-link {
+  color: var(--nav-link-color) !important;
+  font-weight: bold;
+}
+
+body.dark-mode .navbar .nav-link {
+  color: var(--dark-nav-link-color) !important;
+}
+
+/* ============================= */
+/* 📌 TopBar Styles */
+/* ============================= */
+.topbar {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body.dark-mode .topbar {
+  background-color: var(--dark-navbar-bg);
+  color: var(--dark-text-color);
+}
+
+/* ============================= */
+/* 📌 Footer Styles */
+/* ============================= */
+footer {
+  background-color: var(--footer-bg);
+  color: var(--footer-text);
+  text-align: center;
+  padding: 10px 0;
+  font-size: 14px;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  margin-top: auto;
+}
+
+body.dark-mode footer {
+  background-color: var(--dark-footer-bg);
+  color: var(--dark-footer-text);
+}
+
+/* ============================= */
+/* 📌 Card Styles for People List */
+/* ============================= */
+.card {
+  background-color: var(--card-bg);
+  color: var(--card-text-color);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body.dark-mode .card {
+  background-color: var(--dark-card-bg);
+  color: var(--dark-card-text-color);  /* Ensure readability in dark mode */
+}
+
+/* Make sure all text inside the card uses the correct colors */
+body.dark-mode .card .card-title,
+body.dark-mode .card .card-text,
+body.dark-mode .card strong,
+body.dark-mode .card span {
+  color: var(--dark-card-text-color);
+}
+
+/* Ensure icons in dark mode are visible */
+body.dark-mode .card .icon {
+  color: var(--dark-card-text-color);
+}
+
+
+/* ============================= */
+/* 📌 Button Styles */
+/* ============================= */
+.btn-primary {
+  background-color: var(--btn-primary-bg);
+  border-color: var(--btn-primary-border);
+}
+
+body.dark-mode .btn-primary {
+  background-color: var(--dark-btn-primary-bg);
+  border-color: var(--dark-btn-primary-border);
+}
+
+/* Buttons in Light/Dark Mode */
+body.dark-mode .btn-light {
+  background-color: var(--btn-light-bg);
+  color: var(--btn-light-text);
+}
+
+body.dark-mode .btn-dark {
+  background-color: var(--btn-dark-bg);
+  color: var(--btn-dark-text);
+}
+
+/* ============================= */
+/* 📌 Ensure Layout Stays Consistent */
+/* ============================= */
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+}

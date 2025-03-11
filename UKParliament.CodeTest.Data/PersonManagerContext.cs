@@ -23,7 +23,7 @@ public class PersonManagerContext(DbContextOptions<PersonManagerContext> options
                 DateOfBirth = new DateTime(1999, 3, 15),
                 DepartmentId = 2,
                 Email = "mark.simons@example.com",
-                PhoneNumber = "123-456-7890",
+                PhoneNumber = "1234567890",
                 ProfileImageUrl = "https://i.pravatar.cc/300?u=2@site.com",
                 IsActive = true
             },
@@ -35,8 +35,8 @@ public class PersonManagerContext(DbContextOptions<PersonManagerContext> options
                 DateOfBirth = new DateTime(1986, 3, 15),
                 DepartmentId = 4,
                 Email = "sarah.field@example.com",
-                PhoneNumber = "234-567-8901",
-                ProfileImageUrl = "https://i.pravatar.cc/300?u=2@site.com",
+                PhoneNumber = "2345678901",
+                ProfileImageUrl = "https://i.pravatar.cc/300?u=6@site.com",
                 IsActive = true
             },
             new Person
@@ -47,7 +47,7 @@ public class PersonManagerContext(DbContextOptions<PersonManagerContext> options
                 DateOfBirth = new DateTime(1997, 3, 15),
                 DepartmentId = 2,
                 Email = "frank.waters@example.com",
-                PhoneNumber = "345-678-9012",
+                PhoneNumber = "3456789012",
                 ProfileImageUrl = "https://i.pravatar.cc/300?u=2@site.com",
                 IsActive = false
             },
@@ -59,8 +59,8 @@ public class PersonManagerContext(DbContextOptions<PersonManagerContext> options
                 DateOfBirth = new DateTime(2001, 3, 15),
                 DepartmentId = 2,
                 Email = "jessica.green@example.com",
-                PhoneNumber = "456-789-0123",
-                ProfileImageUrl = "https://i.pravatar.cc/300?u=2@site.com",
+                PhoneNumber = "4567890123",
+                ProfileImageUrl = "https://i.pravatar.cc/300?u=3@site.com",
                 IsActive = true
             },
             new Person
@@ -71,7 +71,7 @@ public class PersonManagerContext(DbContextOptions<PersonManagerContext> options
                 DateOfBirth = new DateTime(1992, 3, 15),
                 DepartmentId = 1,
                 Email = "peter.smith@example.com",
-                PhoneNumber = "567-890-1234",
+                PhoneNumber = "5678901234",
                 ProfileImageUrl = "https://i.pravatar.cc/300?u=2@site.com",
                 IsActive = false
             });
