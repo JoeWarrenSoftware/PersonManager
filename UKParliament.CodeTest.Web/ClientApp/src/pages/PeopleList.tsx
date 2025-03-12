@@ -1,61 +1,45 @@
 ﻿import React, { useEffect, useState } from "react";
-import axios from "axios";
+import { apiService } from "../services/apiService.ts";
+import { Person } from "../models/person.ts";
 import { Container, Card, Button, Row, Col } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 
-interface Person {
-  id: number;
-  firstName: string;
-  lastName: string;
-  dateOfBirth: string;
-  departmentId: number;
-  departmentName: string;
-  email: string;
-  phoneNumber: string;
-  profileImageUrl: string;
-  isActive: boolean;
-}
-
 const PeopleList: React.FC = () => {
-  const [people, setPeople] = useState<Person[]>([]);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+    const [people, setPeople] = useState<Person[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const navigate = useNavigate();
+  
+    useEffect(() => {
+        fetchPeople();
+    }, []);
 
-  useEffect(() => {
-    fetchPeople();
-  }, []);
+    const fetchPeople = async () => {
+        try {
+            const data = await apiService.getPeople();
+            setPeople(data);
+        } catch (err) {
+            console.error("Error fetching people:", err);
+            setError("Failed to load people.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  const fetchPeople = () => {
-    axios
-      .get("https://localhost:7048/api/person")
-      .then((response) => {
-        setPeople(response.data.items);
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error fetching people:", error);
-        setLoading(false);
-      });
-  };
+    const handleDelete = async (id: number) => {
+        if (window.confirm("Are you sure you want to delete this person?")) {
+          try {
+            await apiService.deletePerson(id);
+            setPeople(people.filter((p) => p.id !== id));
+          } catch (err) {
+            console.error("Error deleting person:", err);
+            setError("Failed to delete person.");
+          }
+        }
+    };
 
-  const handleDelete = (id: number) => {
-    if (window.confirm("Are you sure you want to delete this person?")) {
-      axios
-        .delete(`https://localhost:7048/api/person/${id}`)
-        .then(() => {
-          alert("Person deleted successfully!");
-          setPeople(people.filter((person) => person.id !== id)); // Update state after delete
-        })
-        .catch((error) => {
-          console.error("Error deleting person:", error);
-          alert("Failed to delete person.");
-        });
-    }
-  };
-
-  if (loading) {
-    return <p className="text-center mt-4">Loading people...</p>;
-  }
+    if (loading) return <p className="text-center mt-4">Loading people...</p>;
+    if (error) return <p className="text-center text-danger">{error}</p>;
 
   return (
     <Container className="mt-4">
@@ -66,7 +50,7 @@ const PeopleList: React.FC = () => {
             <Card className="shadow-sm text-center flex-fill" style={{ maxWidth: "300px", minWidth: "270px", height: "100%" }}>
               <Card.Img
                 variant="top"
-                src={person.profileImageUrl}
+                src={person.profileImageUrl ?? "https://i.pravatar.cc/300?u=2@site.com"}
                 alt={`${person.firstName} ${person.lastName}`}
                 style={{ height: "200px", objectFit: "cover" }}
               />
@@ -91,7 +75,7 @@ const PeopleList: React.FC = () => {
                   <Button
                     variant="danger"
                     className="flex-grow-1"
-                    onClick={() => handleDelete(person.id)}
+                    onClick={() => handleDelete(person.id!)}
                   >
                     Delete
                   </Button>

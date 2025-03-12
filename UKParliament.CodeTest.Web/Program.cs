@@ -1,7 +1,11 @@
+using FluentValidation.AspNetCore;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using UKParliament.CodeTest.Data;
 using UKParliament.CodeTest.Services;
+using UKParliament.CodeTest.Web.Validators;
+using UKParliament.CodeTest.Web.Middlewares;
 
 namespace UKParliament.CodeTest.Web;
 
@@ -42,6 +46,8 @@ public class Program
             builder.Services.AddSwaggerGen();
         }
 
+        builder.Services.AddValidatorsFromAssemblyContaining<CreatePersonRequestValidator>();
+
         var app = builder.Build();
 
         // Create database so the data seeds
@@ -69,6 +75,7 @@ public class Program
             app.UseHsts();
         }
 
+        app.UseMiddleware<GlobalExceptionMiddleware>();
         app.UseHttpsRedirection();
         app.UseSerilogRequestLogging();
         app.MapControllers();

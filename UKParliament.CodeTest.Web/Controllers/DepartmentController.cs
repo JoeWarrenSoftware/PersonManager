@@ -12,12 +12,12 @@ namespace UKParliament.CodeTest.Web.Controllers;
 public class DepartmentController : ControllerBase
 {
     private readonly IDepartmentService _service;
-    private readonly ILogger _logger;
+    private readonly ILogger<DepartmentController> _logger;
 
-    public DepartmentController(IDepartmentService service)
+    public DepartmentController(IDepartmentService service, ILogger<DepartmentController> logger)
     {
         _service = service;
-        _logger = Log.ForContext<DepartmentController>();
+        _logger = logger;
     }
 
     /// <summary>
@@ -27,15 +27,15 @@ public class DepartmentController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<DepartmentsResponse>> GetAll()
     {
-        _logger.Information("Fetching all departments.");
+        _logger.LogInformation("Fetching all departments.");
         var result = await _service.GetAllDepartmentsAsync();
         if (!result.IsSuccess)
         {
-            _logger.Warning("Failed to fetch all departments: {ErrorMessage}", result.ErrorMessage);
+            _logger.LogWarning("Failed to fetch all departments: {ErrorMessage}", result.ErrorMessage);
             return BadRequest(new { message = result.ErrorMessage });
         }
 
-        _logger.Information("Successfully fetched {Count} departments.", result.Data!.Count);
+        _logger.LogInformation("Successfully fetched {Count} departments.", result.Data!.Count);
         return Ok(result.Data!.MapToResponse());
     }
 }

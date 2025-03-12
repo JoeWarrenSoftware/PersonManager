@@ -3,7 +3,7 @@ import { Container, Navbar, Button } from "react-bootstrap";
 
 const TopBar: React.FC = () => {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    return localStorage.getItem("theme") === "dark";
+    return localStorage.getItem("theme") !== "light";
   });
 
   useEffect(() => {

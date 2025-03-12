@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using FluentValidation;
+using Microsoft.AspNetCore.Mvc;
 using Serilog;
 using UKParliament.CodeTest.Services;
 using UKParliament.CodeTest.Web.Contracts.Requests;
@@ -13,12 +14,22 @@ namespace UKParliament.CodeTest.Web.Controllers;
 public class PersonController : ControllerBase
 {
     private readonly IPersonService _service;
-    private readonly ILogger _logger;
+    private readonly ILogger<PersonController> _logger;
+    private readonly IValidator<CreatePersonRequest> _createValidator;
+    private readonly IValidator<UpdatePersonRequest> _updateValidator;
 
-    public PersonController(IPersonService service)
+    private const string _serverErrorMessage = "An error occurred while processing your request. Please try again later.";
+
+    public PersonController(
+        IPersonService service,
+        ILogger<PersonController> logger,
+        IValidator<CreatePersonRequest> createValidator,
+        IValidator<UpdatePersonRequest> updateValidator)
     {
         _service = service;
-        _logger = Log.ForContext<PersonController>();
+        _logger = logger;
+        _createValidator = createValidator;
+        _updateValidator = updateValidator;
     }
 
     /// <summary>
@@ -29,15 +40,15 @@ public class PersonController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<ActionResult<PersonResponse>> GetById(int id)
     {
-        _logger.Information("Fetching person with ID {PersonId}", id);
+        _logger.LogInformation("Fetching person with ID {PersonId}", id);
         var result = await _service.GetPersonByIdAsync(id);
         if (!result.IsSuccess)
         {
-            _logger.Warning("Person with ID {PersonId} not found.", id);
+            _logger.LogWarning("Person with ID {PersonId} not found.", id);
             return NotFound(new { message = result.ErrorMessage });
         }
 
-        _logger.Information("Successfully fetched person with ID {PersonId}", id);
+        _logger.LogInformation("Successfully fetched person with ID {PersonId}", id);
         return Ok(result.Data!.MapToResponse());
     }
 
@@ -48,15 +59,15 @@ public class PersonController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<PersonsResponse>> GetAll()
     {
-        _logger.Information("Fetching all active people.");
+        _logger.LogInformation("Fetching all active people.");
         var result = await _service.GetAllPeopleAsync();
         if (!result.IsSuccess)
         {
-            _logger.Warning("Failed to fetch all people: {ErrorMessage}", result.ErrorMessage);
+            _logger.LogWarning("Failed to fetch all people: {ErrorMessage}", result.ErrorMessage);
             return BadRequest(new { message = result.ErrorMessage });
         }
 
-        _logger.Information("Successfully fetched {Count} people.", result.Data!.Count);
+        _logger.LogInformation("Successfully fetched {Count} people.", result.Data!.Count);
         return Ok(result.Data!.MapToResponse());
     }
 
@@ -68,17 +79,25 @@ public class PersonController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<PersonResponse>> CreatePerson([FromBody] CreatePersonRequest request)
     {
-        _logger.Information("Creating new person: {@Request}", request);
+        _logger.LogInformation("Validating create person request: {@Request}", request);
+
+        var validationResult = await _createValidator.ValidateAsync(request);
+        if (!validationResult.IsValid)
+        {
+            _logger.LogWarning("Validation failed for create person request.");
+            return BadRequest(new { errors = validationResult.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+        }
+
         var person = request.MapToPerson();
         var result = await _service.AddPersonAsync(person);
 
         if (!result.IsSuccess)
         {
-            _logger.Warning("Failed to create person: {ErrorMessage}", result.ErrorMessage);
+            _logger.LogWarning("Failed to create person: {ErrorMessage}", result.ErrorMessage);
             return BadRequest(new { message = result.ErrorMessage });
         }
 
-        _logger.Information("Person created successfully: {@Person}", person);
+        _logger.LogInformation("Person created successfully: {@Person}", person);
         return CreatedAtAction(nameof(GetById), new { id = person.Id }, person.MapToResponse());
     }
 
@@ -91,11 +110,19 @@ public class PersonController : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<ActionResult<PersonResponse>> UpdatePerson(int id, [FromBody] UpdatePersonRequest request)
     {
-        _logger.Information("Updating person with ID {PersonId}: {@Request}", id, request);
+        _logger.LogInformation("Validating update person request: {@Request}", request);
+
+        var validationResult = await _updateValidator.ValidateAsync(request);
+        if (!validationResult.IsValid)
+        {
+            _logger.LogWarning("Validation failed for update person request.");
+            return BadRequest(new { errors = validationResult.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) });
+        }
+
         var existingPerson = await _service.GetPersonByIdAsync(id);
         if (!existingPerson.IsSuccess)
         {
-            _logger.Warning("Person with ID {PersonId} not found.", id);
+            _logger.LogWarning("Person with ID {PersonId} not found.", id);
             return NotFound(new { message = existingPerson.ErrorMessage });
         }
 
@@ -104,11 +131,11 @@ public class PersonController : ControllerBase
 
         if (!result.IsSuccess)
         {
-            _logger.Warning("Failed to update person with ID {PersonId}: {ErrorMessage}", id, result.ErrorMessage);
+            _logger.LogWarning("Failed to update person with ID {PersonId}: {ErrorMessage}", id, result.ErrorMessage);
             return BadRequest(new { message = result.ErrorMessage });
         }
 
-        _logger.Information("Person with ID {PersonId} updated successfully.", id);
+        _logger.LogInformation("Person with ID {PersonId} updated successfully.", id);
         return Ok(person.MapToResponse());
     }
 
@@ -120,17 +147,17 @@ public class PersonController : ControllerBase
     [HttpPatch("{id}/deactivate")]
     public async Task<IActionResult> DeactivatePerson(int id)
     {
-        _logger.Information("Deactivating person with ID {PersonId}", id);
+        _logger.LogInformation("Deactivating person with ID {PersonId}", id);
         var result = await _service.DeactivatePersonAsync(id);
         if (!result.IsSuccess)
         {
-            _logger.Warning("Failed to deactivate person with ID {PersonId}: {ErrorMessage}", id, result.ErrorMessage);
+            _logger.LogWarning("Failed to deactivate person with ID {PersonId}: {ErrorMessage}", id, result.ErrorMessage);
             if (result.ErrorMessage == "Person not found.")
                 return NotFound(new { message = result.ErrorMessage });
             return BadRequest(new { message = result.ErrorMessage });
         }
 
-        _logger.Information("Person with ID {PersonId} deactivated successfully", id);
+        _logger.LogInformation("Person with ID {PersonId} deactivated successfully", id);
         return Ok(new { message = "Person has been deactivated." });
     }
 
@@ -142,17 +169,17 @@ public class PersonController : ControllerBase
     [HttpPatch("{id}/activate")]
     public async Task<IActionResult> ActivatePerson(int id)
     {
-        _logger.Information("Activating person with ID {PersonId}", id);
+        _logger.LogInformation("Activating person with ID {PersonId}", id);
         var result = await _service.ActivatePersonAsync(id);
         if (!result.IsSuccess)
         {
-            _logger.Warning("Failed to activate person with ID {PersonId}: {ErrorMessage}", id, result.ErrorMessage);
+            _logger.LogWarning("Failed to activate person with ID {PersonId}: {ErrorMessage}", id, result.ErrorMessage);
             if (result.ErrorMessage == "Person not found.")
                 return NotFound(new { message = result.ErrorMessage });
             return BadRequest(new { message = result.ErrorMessage });
         }
 
-        _logger.Information("Person with ID {PersonId} activated successfully", id);
+        _logger.LogInformation("Person with ID {PersonId} activated successfully", id);
         return Ok(new { message = "Person has been reactivated." });
     }
 
@@ -164,15 +191,15 @@ public class PersonController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeletePerson(int id)
     {
-        _logger.Information("Deleting person with ID {PersonId}", id);
+        _logger.LogInformation("Deleting person with ID {PersonId}", id);
         var result = await _service.DeletePersonAsync(id);
         if (!result.IsSuccess)
         {
-            _logger.Warning("Failed to delete person with ID {PersonId}: {ErrorMessage}", id, result.ErrorMessage);
+            _logger.LogWarning("Failed to delete person with ID {PersonId}: {ErrorMessage}", id, result.ErrorMessage);
             return NotFound(new { message = result.ErrorMessage });
         }
 
-        _logger.Information("Person with ID {PersonId} deleted successfully.", id);
+        _logger.LogInformation("Person with ID {PersonId} deleted successfully.", id);
         return Ok(new { message = "Person has been permanently deleted." });
     }
 }

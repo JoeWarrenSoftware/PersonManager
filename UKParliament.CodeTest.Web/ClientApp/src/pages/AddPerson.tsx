@@ -1,184 +1,94 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
-import { Container, Form, Button } from "react-bootstrap";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { personValidationSchema } from "../validation/personValidation";
+import { apiService } from "../services/apiService";
+import { Person } from "../models/person";
 import { useNavigate } from "react-router-dom";
-
-interface Department {
-  id: number;
-  name: string;
-}
+import { Container, Form, Button } from "react-bootstrap";
+import ErrorMessage from "../components/ErrorMessage";
 
 const AddPerson: React.FC = () => {
   const navigate = useNavigate();
-
-  const [person, setPerson] = useState({
-    firstName: "",
-    lastName: "",
-    dateOfBirth: "",
-    departmentId: "",
-    email: "",
-    phoneNumber: "",
-    profileImageUrl: "",
-  });
-
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
+  const [departments, setDepartments] = useState<{ id: number; name: string }[]>([]);
 
   useEffect(() => {
-    axios
-      .get("https://localhost:7048/api/department")
-      .then((response) => {
-        setDepartments(response.data.items);
-      })
-      .catch((error) => {
-        console.error("Error fetching departments:", error);
-      });
+    apiService.getDepartments().then(setDepartments);
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    if (person) {
-        setPerson({ ...person, [e.target.name]: e.target.value });
-        setValidationErrors({ ...validationErrors, [e.target.name]: "" }); // Clear validation error when typing
-    }
-  };
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<Person>({
+    resolver: yupResolver<Person>(personValidationSchema),
+  });
 
-  const validateForm = () => {
-    const errors: { [key: string]: string } = {};
-
-    if (!person.email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) {
-      errors.email = "Invalid email format";
-    }
-
-    if (!person.phoneNumber.match(/^\+?\d{7,15}$/)) {
-      errors.phoneNumber = "Invalid phone number format (7-15 digits)";
-    }
-
-    if (!person.profileImageUrl.match(/^(https?:\/\/.*)$/i)) {
-      errors.profileImageUrl = "Invalid image URL (must be a valid image link)";
-    }
-
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      axios
-        .post("https://localhost:7048/api/person", person)
-        .then(() => {
-          alert("Person added successfully!");
-          navigate("/people");
-        })
-        .catch((error) => {
-          console.error("Error adding person:", error);
-          alert("Failed to add person.");
-        });
+  const onSubmit = async (data: Person) => {
+    try {
+      await apiService.createPerson(data);
+      alert("Person added successfully!");
+      navigate("/people");
+    } catch (error) {
+      console.error("Error adding person:", error);
+      alert("Failed to add person.");
     }
   };
 
   return (
     <Container className="mt-4">
       <h2 className="text-center mb-4">Add Person</h2>
-      <Form onSubmit={handleSubmit} className="mx-auto" style={{ maxWidth: "600px" }}>
-        <Form.Group className="mb-3">
+      <Form onSubmit={handleSubmit(onSubmit)} className="mx-auto" style={{ maxWidth: "600px" }}>
+      <Form.Group className="mb-3">
           <Form.Label htmlFor="firstName">First Name</Form.Label>
-          <Form.Control
-            type="text"
-            id="firstName"
-            name="firstName"
-            value={person.firstName}
-            onChange={handleChange}
-            required
-          />
+          <Form.Control id="firstName" type="text" {...register("firstName")} />
+          <ErrorMessage message={errors.firstName?.message} />
         </Form.Group>
 
         <Form.Group className="mb-3">
           <Form.Label htmlFor="lastName">Last Name</Form.Label>
-          <Form.Control
-            type="text"
-            id="lastName"
-            name="lastName"
-            value={person.lastName}
-            onChange={handleChange}
-            required
-          />
+          <Form.Control id="lastName" type="text" {...register("lastName")} />
+          <ErrorMessage message={errors.lastName?.message} />
         </Form.Group>
 
         <Form.Group className="mb-3">
           <Form.Label htmlFor="dateOfBirth">Date of Birth</Form.Label>
-          <Form.Control
-            type="date"
-            id="dateOfBirth"
-            name="dateOfBirth"
-            value={person.dateOfBirth}
-            onChange={handleChange}
-            required
-          />
+          <Form.Control id="dateOfBirth" type="date" {...register("dateOfBirth")} />
+          <ErrorMessage message={errors.dateOfBirth?.message} />
         </Form.Group>
 
         <Form.Group className="mb-3">
           <Form.Label htmlFor="departmentId">Department</Form.Label>
-          <Form.Select
-            id="departmentId"
-            name="departmentId"
-            value={person.departmentId}
-            onChange={handleChange}
-            required
-          >
-            <option value="">Select a department...</option>
+          <Form.Select id="departmentId" {...register("departmentId")}>
+            <option value="">Select Department...</option>
             {departments.map((dept) => (
               <option key={dept.id} value={dept.id}>
                 {dept.name}
               </option>
             ))}
           </Form.Select>
+          <ErrorMessage message={errors.departmentId?.message} />
         </Form.Group>
 
         <Form.Group className="mb-3">
           <Form.Label htmlFor="email">Email</Form.Label>
-          <Form.Control
-            type="email"
-            id="email"
-            name="email"
-            value={person.email}
-            onChange={handleChange}
-            isInvalid={!!validationErrors.email}
-            required
-          />
-          <Form.Control.Feedback type="invalid">{validationErrors.email}</Form.Control.Feedback>
+          <Form.Control id="email" type="email" {...register("email")} />
+          <ErrorMessage message={errors.email?.message} />
         </Form.Group>
 
         <Form.Group className="mb-3">
           <Form.Label htmlFor="phoneNumber">Phone Number</Form.Label>
-          <Form.Control
-            type="tel"
-            id="phoneNumber"
-            name="phoneNumber"
-            value={person.phoneNumber}
-            onChange={handleChange}
-            isInvalid={!!validationErrors.phoneNumber}
-            required
-          />
-          <Form.Control.Feedback type="invalid">{validationErrors.phoneNumber}</Form.Control.Feedback>
+          <Form.Control id="phoneNumber" type="tel" {...register("phoneNumber")} />
+          <ErrorMessage message={errors.phoneNumber?.message} />
         </Form.Group>
 
         <Form.Group className="mb-3">
           <Form.Label htmlFor="profileImageUrl">Profile Image URL</Form.Label>
-          <Form.Control
-            type="text"
-            id="profileImageUrl"
-            name="profileImageUrl"
-            value={person.profileImageUrl}
-            onChange={handleChange}
-            isInvalid={!!validationErrors.profileImageUrl}
-            required
-          />
-          <Form.Control.Feedback type="invalid">{validationErrors.profileImageUrl}</Form.Control.Feedback>
+          <Form.Control id="profileImageUrl" type="text" {...register("profileImageUrl")} />
+          <ErrorMessage message={errors.profileImageUrl?.message} />
         </Form.Group>
 
-        <Button variant="primary" type="submit">
+        <Button variant="primary" type="submit" className="mx-auto d-block">
           Add Person
         </Button>
       </Form>
